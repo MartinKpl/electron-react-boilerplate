@@ -14,6 +14,9 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import { GlobalKeyboardListener } from 'node-global-key-listener';
+import Store from 'electron-store';
+import { Hotkey } from '../renderer/App';
 
 class AppUpdater {
   constructor() {
@@ -135,3 +138,47 @@ app
     });
   })
   .catch(console.log);
+
+const store = new Store();
+
+// IPC listener
+ipcMain.on('electron-store-get', async (event, val) => {
+  event.returnValue = store.get(val);
+});
+ipcMain.on('electron-store-set', async (event, key, val) => {
+  store.set(key, val);
+});
+
+const v = new GlobalKeyboardListener();
+
+var ks = require('node-key-sender');
+
+v.addListener(function (e, down) {
+  
+  if(e.state === "DOWN"){
+    // console.log(
+    //     `${e.name} ${e.state == "DOWN" ? "DOWN" : "UP  "} [${e.rawKey ? e.rawKey._nameRaw : ""}]`
+    // );
+    
+    if(e.name){
+      var aux = store.get("hotkeys")
+      
+      var rawStoredHotkeys = aux ? aux as string : "[]"
+
+      var storedHotkeys = JSON.parse(rawStoredHotkeys) as HotkeysStorage
+      if(storedHotkeys){
+        for(var i = 0; i < storedHotkeys.length; i++){
+          var hotkey = storedHotkeys[i]
+          if(hotkey.hotkey == e.name && hotkey.active){
+            ks.sendText(hotkey.text);
+            console.log(`${e.name}: ${hotkey.text}`)
+            break
+          }
+        }
+      }
+      // console.log(store.get(e.name))
+    }
+
+    // mainWindow?.webContents.send("key-pressed", e)
+  }
+});
