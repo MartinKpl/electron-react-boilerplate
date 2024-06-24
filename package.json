@@ -104,7 +104,8 @@
     "node-global-key-listener": "^0.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.16.0"
+    "react-router-dom": "^6.16.0",
+    "node-key-sender": "^1.0.11"
   },
   "devDependencies": {
     "@electron/notarize": "^2.1.0",
@@ -233,7 +234,17 @@
       "output": "release/build"
     },
     "extraResources": [
-      "./assets/**"
+      "./assets/**",
+      {
+        "from": "node_modules/node-key-sender/",
+        "to": "node_modules/node-key-sender/",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "node_modules/node-global-key-listener/",
+        "to": "node_modules/node-global-key-listener/",
+        "filter": ["**/*"]
+      }
     ],
     "publish": {
       "provider": "github",

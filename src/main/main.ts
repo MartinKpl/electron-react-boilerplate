@@ -9,7 +9,7 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, globalShortcut } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
@@ -149,36 +149,103 @@ ipcMain.on('electron-store-set', async (event, key, val) => {
   store.set(key, val);
 });
 
-const v = new GlobalKeyboardListener();
+// const v = new GlobalKeyboardListener();
 
-var ks = require('node-key-sender');
+const ks = require('node-key-sender');
 
-v.addListener(function (e, down) {
-  
-  if(e.state === "DOWN"){
-    // console.log(
-    //     `${e.name} ${e.state == "DOWN" ? "DOWN" : "UP  "} [${e.rawKey ? e.rawKey._nameRaw : ""}]`
-    // );
+// v.addListener(function (e, down) {
+//   console.log("Event listener setup complete");
+//   if(e.state === "DOWN"){
+//     // console.log(
+//     //     `${e.name} ${e.state == "DOWN" ? "DOWN" : "UP  "} [${e.rawKey ? e.rawKey._nameRaw : ""}]`
+//     // );
     
-    if(e.name){
-      var aux = store.get("hotkeys")
+//     if(e.name){
+//       var aux = store.get("hotkeys")
       
-      var rawStoredHotkeys = aux ? aux as string : "[]"
+//       var rawStoredHotkeys = aux ? aux as string : "[]"
 
-      var storedHotkeys = JSON.parse(rawStoredHotkeys) as HotkeysStorage
-      if(storedHotkeys){
-        for(var i = 0; i < storedHotkeys.length; i++){
-          var hotkey = storedHotkeys[i]
-          if(hotkey.hotkey == e.name && hotkey.active){
-            ks.sendText(hotkey.text);
-            console.log(`${e.name}: ${hotkey.text}`)
-            break
-          }
-        }
+//       var storedHotkeys = JSON.parse(rawStoredHotkeys) as HotkeysStorage
+//       if(storedHotkeys){
+//         for(var i = 0; i < storedHotkeys.length; i++){
+//           var hotkey = storedHotkeys[i]
+//           if(hotkey.hotkey == e.name && hotkey.active){
+//             try {
+//               ks.sendText(hotkey.text);
+//               console.log(`${e.name}: ${hotkey.text}`);
+//             } catch (error) {
+//               console.error('Error sending text:', error);
+//             }
+//             break
+//           }
+//         }
+//       }
+//       // console.log(store.get(e.name))
+//     }
+
+//     // mainWindow?.webContents.send("key-pressed", e) cd imssss
+//   }
+// });
+
+function registerHotkey(hotkey: Hotkey) {
+  if (hotkey.active) {
+    globalShortcut.unregister(hotkey.hotkey);
+    const registered = globalShortcut.register(hotkey.hotkey, () => {
+      try {
+        ks.sendText(hotkey.text);
+        console.log(`${hotkey.hotkey}: ${hotkey.text}`);
+      } catch (error) {
+        console.error('Error sending text:', error);
       }
-      // console.log(store.get(e.name))
-    }
+    });
 
-    // mainWindow?.webContents.send("key-pressed", e)
+    if (!registered) {
+      console.log(`Failed to register shortcut: ${hotkey.hotkey}`);
+    }
   }
+}
+
+// Register all hotkeys from the store
+function registerGlobalShortcuts() {
+  const aux = store.get("hotkeys");
+  const rawStoredHotkeys = aux ? aux as string: "[]";
+  const storedHotkeys = JSON.parse(rawStoredHotkeys) as HotkeysStorage;
+
+  if (storedHotkeys && Array.isArray(storedHotkeys)) {
+    storedHotkeys.forEach(hotkey => {
+      registerHotkey(hotkey);
+    });
+  }
+}
+
+app.on('ready', () => {
+  registerGlobalShortcuts();
+  console.log("Global shortcuts registered");
+
+  // Watch for changes in the store
+  store.onDidChange('hotkeys', (newHotkeys: any, oldHotkeys: any) => {
+    const newHotkeysParsed = JSON.parse(newHotkeys) as HotkeysStorage;
+    const oldHotkeysParsed = JSON.parse(oldHotkeys) as HotkeysStorage;
+
+    // Find added hotkeys
+    newHotkeysParsed.forEach(newHotkey => {
+      const isAdded = !oldHotkeysParsed.find(oldHotkey => JSON.stringify(oldHotkey) === JSON.stringify(newHotkey));
+      if (isAdded) {
+        registerHotkey(newHotkey);
+      }
+    });
+
+    // Optionally, handle removed or updated hotkeys
+    // oldHotkeysParsed.forEach(oldHotkey => {
+    //   const isRemoved = !newHotkeysParsed.find(newHotkey => newHotkey.hotkey === oldHotkey.hotkey);
+    //   if (isRemoved) {
+    //     globalShortcut.unregister(oldHotkey.hotkey);
+    //   }
+    // });
+  });
+});
+
+app.on('will-quit', () => {
+  // Unregister all shortcuts.
+  globalShortcut.unregisterAll();
 });

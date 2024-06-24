@@ -1,7 +1,3 @@
-/**
- * Build config for electron renderer process
- */
-
 import path from 'path';
 import webpack from 'webpack';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
@@ -39,23 +35,22 @@ const configuration: webpack.Configuration = {
   module: {
     rules: [
       {
-        test: /\.s?(a|c)ss$/,
+        test: /\.css$/,
         use: [
           MiniCssExtractPlugin.loader,
+          'css-loader',
           {
-            loader: 'css-loader',
+            loader: 'postcss-loader',
             options: {
-              modules: true,
-              sourceMap: true,
-              importLoaders: 1,
+              postcssOptions: {
+                plugins: [require('tailwindcss'), require('autoprefixer')],
+              },
             },
           },
-          'sass-loader',
         ],
-        include: /\.module\.s?(c|a)ss$/,
       },
       {
-        test: /\.s?(a|c)ss$/,
+        test: /\.s[ac]ss$/i,
         use: [
           MiniCssExtractPlugin.loader,
           'css-loader',
@@ -63,22 +58,12 @@ const configuration: webpack.Configuration = {
           {
             loader: 'postcss-loader',
             options: {
-            postcssOptions: {
-              plugins:
-                [
-                  require('tailwindcss'),
-                  require('autoprefixer'),
-                ]
+              postcssOptions: {
+                plugins: [require('tailwindcss'), require('autoprefixer')],
               },
             },
           },
         ],
-        exclude: /\.module\.s?(c|a)ss$/,
-      },
-      {
-        test: /\.s?(a|c)ss$/,
-        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
-        exclude: /\.module\.s?(c|a)ss$/,
       },
       // Fonts
       {
@@ -118,15 +103,6 @@ const configuration: webpack.Configuration = {
   },
 
   plugins: [
-    /**
-     * Create global constants which can be configured at compile time.
-     *
-     * Useful for allowing different behaviour between development builds and
-     * release builds
-     *
-     * NODE_ENV should be production so that modules do not perform certain
-     * development checks
-     */
     new webpack.EnvironmentPlugin({
       NODE_ENV: 'production',
       DEBUG_PROD: false,
