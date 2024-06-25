@@ -17,6 +17,7 @@ import { resolveHtmlPath } from './util';
 import { GlobalKeyboardListener } from 'node-global-key-listener';
 import Store from 'electron-store';
 import { Hotkey } from '../renderer/App';
+import { keyboard } from '@nut-tree-fork/nut-js';
 
 class AppUpdater {
   constructor() {
@@ -27,6 +28,8 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
+
+
 
 ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
@@ -187,20 +190,26 @@ const ks = require('node-key-sender');
 //   }
 // });
 
+// const {keyboard} = require("@nut-tree/nut-js");
+keyboard.config.autoDelayMs = 0;
 function registerHotkey(hotkey: Hotkey) {
   if (hotkey.active) {
     globalShortcut.unregister(hotkey.hotkey);
     const registered = globalShortcut.register(hotkey.hotkey, () => {
       try {
-        ks.sendText(hotkey.text);
+        // ks.sendText(hotkey.text);
+        keyboard.type(hotkey.text);
         console.log(`${hotkey.hotkey}: ${hotkey.text}`);
+        log.info(`${hotkey.hotkey}: ${hotkey.text}`)
       } catch (error) {
         console.error('Error sending text:', error);
+        log.info('Error sending text:', error)
       }
     });
 
     if (!registered) {
       console.log(`Failed to register shortcut: ${hotkey.hotkey}`);
+      log.info(`Failed to register shortcut: ${hotkey.hotkey}`)
     }
   }
 }
@@ -221,6 +230,7 @@ function registerGlobalShortcuts() {
 app.on('ready', () => {
   registerGlobalShortcuts();
   console.log("Global shortcuts registered");
+  log.info("Global shortcuts registered")
 
   // Watch for changes in the store
   store.onDidChange('hotkeys', (newHotkeys: any, oldHotkeys: any) => {
